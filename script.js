@@ -75,3 +75,64 @@ nav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classL
   window.addEventListener('pointerdown',start,{once:true});
   sync();
 })();
+
+// Community comments: Supabase-backed, shared across all visitors.
+(function setupComments(){
+  const form=document.getElementById('commentForm');
+  const list=document.getElementById('commentsList');
+  const count=document.getElementById('commentCount');
+  const status=document.getElementById('commentStatus');
+  const refresh=document.getElementById('commentRefresh');
+  const submit=document.getElementById('commentSubmit');
+  if(!form||!list) return;
+
+  const cfg=window.SHAZ_SUPABASE_CONFIG||{};
+  const configured=cfg.url && cfg.anonKey && !cfg.url.includes('YOUR-PROJECT') && !cfg.anonKey.includes('YOUR_SUPABASE');
+  let client=null;
+  if(window.supabase && configured) client=window.supabase.createClient(cfg.url,cfg.anonKey);
+
+  const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const relative=(iso)=>{
+    const sec=Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/1000));
+    if(sec<60) return 'just now';
+    const units=[[86400,'day'],[3600,'hour'],[60,'minute']];
+    for(const [n,label] of units) if(sec>=n){const x=Math.floor(sec/n);return `${x} ${label}${x===1?'':'s'} ago`;}
+    return 'just now';
+  };
+  const setStatus=(msg,error=false)=>{status.textContent=msg;status.classList.toggle('error',error)};
+
+  const render=(rows)=>{
+    count.textContent=String(rows.length);
+    if(!rows.length){list.innerHTML='<div class="comments-empty">No comments yet. Be the first to say something 👋</div>';return;}
+    list.innerHTML=rows.map(row=>`<article class="comment-item"><div class="comment-avatar">${esc((row.name||'?').trim().charAt(0).toUpperCase())}</div><div class="comment-body"><div class="comment-meta"><strong>${esc(row.name)}</strong><time datetime="${esc(row.created_at)}">${relative(row.created_at)}</time></div><p>${esc(row.comment).replace(/\n/g,'<br>')}</p></div></article>`).join('');
+  };
+
+  async function load(){
+    if(!client){
+      list.innerHTML='<div class="comments-setup">Comments are ready, but the Supabase connection is not configured yet.</div>';
+      count.textContent='0';
+      setStatus('Add your Supabase URL and anon public key in supabase-config.js.',true);
+      return;
+    }
+    list.innerHTML='<div class="comments-loading">LOADING COMMENTS…</div>';
+    const {data,error}=await client.from('comments').select('id,name,comment,created_at').order('created_at',{ascending:false}).limit(100);
+    if(error){console.error(error);list.innerHTML='<div class="comments-error">Couldn’t load comments right now. Please try again.</div>';setStatus('Couldn’t connect to the comments database.',true);return;}
+    render(data||[]);setStatus('Your comment will appear here for everyone.');
+  }
+
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault();
+    if(!client){setStatus('Comments are not connected yet. Please finish the Supabase setup.',true);return;}
+    const name=form.name.value.trim(), comment=form.comment.value.trim();
+    if(name.length<2){setStatus('Please enter your name.',true);form.name.focus();return;}
+    if(comment.length<2){setStatus('Please write a comment.',true);form.comment.focus();return;}
+    if(name.length>60||comment.length>1000){setStatus('Please keep the name under 60 characters and comment under 1000.',true);return;}
+    submit.disabled=true;submit.classList.add('loading');setStatus('POSTING COMMENT…');
+    const {error}=await client.from('comments').insert({name,comment});
+    submit.disabled=false;submit.classList.remove('loading');
+    if(error){console.error(error);setStatus('Couldn’t post your comment. Please try again.',true);return;}
+    form.reset();setStatus('Comment posted successfully!');await load();
+  });
+  refresh?.addEventListener('click',load);
+  load();
+})();

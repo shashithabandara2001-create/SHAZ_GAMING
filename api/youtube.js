@@ -41,26 +41,36 @@ export default async function handler(req, res) {
     });
     if (!feed.ok) throw new Error(`YouTube RSS returned ${feed.status}`);
     const xml = await feed.text();
-    const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)].slice(0, 3);
+    const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)].slice(0, 12);
 
-    const items = entries.map(m => {
+    const baseItems = entries.map(m => {
       const entry = m[1];
       const videoId = tag(entry, 'yt:videoId');
       const title = tag(entry, 'title');
       const published = tag(entry, 'published');
       const thumbnailMatch = entry.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i);
       const thumbnail = thumbnailMatch ? decodeXml(thumbnailMatch[1]) : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-      return {
-        videoId,
-        title,
-        published,
-        thumbnail,
-        url: `https://www.youtube.com/watch?v=${videoId}`
-      };
+      return { videoId, title, published, thumbnail, url: `https://www.youtube.com/watch?v=${videoId}` };
     }).filter(item => item.videoId && item.title);
 
+    // YouTube marks stream/VOD pages with isLiveContent. Title matching is kept as a fallback.
+    const checked = await Promise.all(baseItems.map(async item => {
+      let isLiveLike = /\b(live|livestream|stream|streaming)\b/i.test(item.title);
+      try {
+        const videoPage = await fetch(`https://www.youtube.com/watch?v=${encodeURIComponent(item.videoId)}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        if (videoPage.ok) {
+          const body = await videoPage.text();
+          if (/\"isLiveContent\"\s*:\s*true/i.test(body) || /\"isLiveNow\"\s*:\s*true/i.test(body)) isLiveLike = true;
+        }
+      } catch (_) {}
+      return { ...item, isLiveLike };
+    }));
+    const liveItems = checked.filter(item => item.isLiveLike);
+
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-    res.status(200).json({ channelId, items });
+    res.status(200).json({ channelId, items: checked, liveItems });
   } catch (error) {
     console.error(error);
     res.status(502).json({ error: 'Unable to load YouTube videos right now.' });
