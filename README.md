@@ -1,10 +1,8 @@
-# SHAZ Gaming Website V3
+SHAZ Gaming V8
 
-Official SHAZ gaming landing page with a purple + red + black esports theme.
+- Real SHAZ YouTube stream/VOD cards in the LIVE MOMENTS section.
+- Background music control prepared at 22% volume. Put the selected Pixabay MP3 at assets/background-music.mp3.
+- Music starts after a user interaction if enabled, due to browser autoplay restrictions.
+- Existing SHAZ photos, socials and latest-video feed preserved.
 
-## Links
-- YouTube: https://www.youtube.com/@SHAZ_playz
-- Facebook: https://www.facebook.com/SHAZxPUBG
-
-## Deploy
-Upload all files/folders to the GitHub repository connected to Vercel. Commit the changes. Vercel will automatically redeploy the site.
+Selected track: Game Gaming Background Music by MaksymMalko, Pixabay.
