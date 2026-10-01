@@ -63,17 +63,48 @@ nav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classL
   }
 })();
 
-// Background music: prepared for assets/background-music.mp3 at a low 22% volume.
+// Background music: ON by default. Visitors can turn it off; the choice is remembered.
+// Note: browsers may block audible autoplay until the visitor interacts with the page.
 (function setupMusic(){
   const audio=document.getElementById('bgMusic'), btn=document.getElementById('musicToggle');
   if(!audio||!btn) return;
   audio.volume=0.22;
-  let enabled=localStorage.getItem('shazMusicEnabled')==='1';
-  const sync=()=>{btn.classList.toggle('on',enabled);btn.setAttribute('aria-pressed',String(enabled));btn.querySelector('b').textContent=enabled?'ON':'MUSIC';};
-  const start=()=>{if(enabled) audio.play().catch(()=>{});};
-  btn.addEventListener('click',()=>{enabled=!enabled;localStorage.setItem('shazMusicEnabled',enabled?'1':'0');if(enabled) audio.play().catch(()=>{});else audio.pause();sync();});
-  window.addEventListener('pointerdown',start,{once:true});
+
+  const saved=localStorage.getItem('shazMusicEnabled');
+  let enabled=saved===null ? true : saved==='1';
+
+  const sync=()=>{
+    btn.classList.toggle('on',enabled);
+    btn.setAttribute('aria-pressed',String(enabled));
+    btn.querySelector('b').textContent=enabled?'ON':'OFF';
+    btn.querySelector('span').textContent=enabled?'♫':'🔇';
+    btn.setAttribute('aria-label',enabled?'Turn background music off':'Turn background music on');
+  };
+
+  const start=()=>{
+    if(!enabled) return;
+    audio.play().catch(()=>{});
+  };
+
+  const stop=()=>{
+    audio.pause();
+  };
+
+  btn.addEventListener('click',(event)=>{
+    event.stopPropagation();
+    enabled=!enabled;
+    localStorage.setItem('shazMusicEnabled',enabled?'1':'0');
+    if(enabled) start(); else stop();
+    sync();
+  });
+
+  // Try immediately on page load. If the browser blocks audible autoplay,
+  // start automatically on the visitor's first interaction.
   sync();
+  start();
+  window.addEventListener('pointerdown',start,{once:true,passive:true});
+  window.addEventListener('keydown',start,{once:true,passive:true});
+  window.addEventListener('touchstart',start,{once:true,passive:true});
 })();
 
 // Community comments: Supabase-backed, shared across all visitors.
