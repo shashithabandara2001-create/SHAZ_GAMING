@@ -1,55 +1,169 @@
-const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
-const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const channelUrl='https://www.youtube.com/@SHAZ_playz';
+const menuBtn=document.getElementById('menuBtn');const nav=document.getElementById('navLinks');
+menuBtn?.addEventListener('click',()=>{nav.classList.toggle('open');document.body.classList.toggle('menu-open')});
+nav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classList.remove('open');document.body.classList.remove('menu-open')}));
 
-// Premium boot / scroll UI
-window.addEventListener('load',()=>setTimeout(()=>$('#preloader')?.classList.add('hide'),350));
-$('#year').textContent=new Date().getFullYear();
-const nav=$('#siteNav'), progress=$('#scrollProgress'), toTop=$('#toTop');
-function scrollUI(){const y=scrollY, h=document.documentElement.scrollHeight-innerHeight; nav?.classList.toggle('scrolled',y>30); if(progress) progress.style.width=(h>0?(y/h)*100:0)+'%'; toTop?.classList.toggle('show',y>650)}
-addEventListener('scroll',scrollUI,{passive:true}); scrollUI(); toTop?.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
 
-// Mobile menu + active section
-const menu=$('#menuBtn'), navLinks=$('#navLinks');
-menu?.addEventListener('click',()=>{const open=navLinks.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));menu.textContent=open?'×':'☰'});
-$$('#navLinks a').forEach(a=>a.addEventListener('click',()=>{navLinks.classList.remove('open');menu?.setAttribute('aria-expanded','false');if(menu)menu.textContent='☰'}));
-const sections=$$('main section[id]');
-if('IntersectionObserver' in window){const io=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){$$('#navLinks a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id))}}),{rootMargin:'-35% 0px -55%'});sections.forEach(s=>io.observe(s));}
-
-// Desktop custom cursor
-if(matchMedia('(pointer:fine)').matches){const dot=$('#cursorDot'),ring=$('#cursorRing');let x=innerWidth/2,y=innerHeight/2,rx=x,ry=y;addEventListener('pointermove',e=>{x=e.clientX;y=e.clientY;dot.style.left=x+'px';dot.style.top=y+'px'});function tick(){rx+=(x-rx)*.16;ry+=(y-ry)*.16;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(tick)}tick();$$('a,button,.photo-card').forEach(el=>{el.addEventListener('mouseenter',()=>{ring.style.width='42px';ring.style.height='42px'});el.addEventListener('mouseleave',()=>{ring.style.width='28px';ring.style.height='28px'})})}
-
-// Hero particles
-const particleBox=$('#heroParticles');if(particleBox&&!matchMedia('(prefers-reduced-motion: reduce)').matches){for(let i=0;i<26;i++){const p=document.createElement('i');p.className='particle';p.style.left=Math.random()*100+'%';p.style.top=(30+Math.random()*70)+'%';p.style.animationDuration=(4+Math.random()*8)+'s';p.style.animationDelay=(-Math.random()*8)+'s';particleBox.appendChild(p)}}
-
-// YouTube latest videos
-(async function loadLatestYouTubeVideos(){const grid=$('#youtubeVideos');if(!grid)return;const timeAgo=date=>{const sec=Math.max(1,Math.floor((Date.now()-new Date(date).getTime())/1000));const units=[[31536000,'year'],[2592000,'month'],[604800,'week'],[86400,'day'],[3600,'hour'],[60,'minute']];for(const[n,label]of units)if(sec>=n){const x=Math.floor(sec/n);return `${x} ${label}${x===1?'':'s'} ago`}return'just now'};try{const r=await fetch('/api/youtube',{headers:{Accept:'application/json'},cache:'no-store'});if(!r.ok)throw Error('API '+r.status);const data=await r.json();if(!data.items?.length)throw Error('No videos');grid.innerHTML=data.items.slice(0,3).map((v,i)=>{const title=esc(v.title),thumb=esc(v.thumbnail),url=esc(v.url),date=v.published?timeAgo(v.published):'YouTube upload';return `<a class="video-card ${i===0?'big':''}" href="${url}" target="_blank" rel="noopener noreferrer"><div class="thumb"><img class="video-thumb" src="${thumb}" alt="${title}" loading="${i===0?'eager':'lazy'}"><div class="thumb-overlay"></div><span class="play">▶</span>${i===0?'<label>LATEST</label>':''}</div><div class="video-info"><span>PUBG MOBILE</span><h3>${title}</h3><p>${date} · Watch on YouTube</p></div></a>`}).join('');revealNew()}catch(e){console.error(e);grid.innerHTML=`<div class="video-error">Couldn’t load the latest videos right now. <a href="${channelUrl}" target="_blank" rel="noopener noreferrer">Open SHAZ Playz on YouTube ↗</a></div>`}})();
-
-// Live stream wall + live status
-(async function loadLiveMoments(){const grid=$('#liveMoments'),status=$('#liveStatus');if(!grid)return;try{const r=await fetch('/api/youtube?live=1',{headers:{Accept:'application/json'},cache:'no-store'});if(!r.ok)throw Error('API '+r.status);const data=await r.json();const live=data.liveItems||[];if(status){status.innerHTML=`<span class="status-dot ${live.some(x=>x.isLiveNow)?'live-now':''}"></span><b>${live.some(x=>x.isLiveNow)?'SHAZ IS LIVE NOW':'LATEST SHAZ STREAMS'}</b><a href="${channelUrl}" target="_blank" rel="noopener noreferrer">OPEN CHANNEL ↗</a>`}const items=(live.length?live:data.items||[]).slice(0,6);if(!items.length)throw Error('No streams');grid.innerHTML=items.map(v=>{const title=esc(v.title||'SHAZ LIVE'),id=esc(v.videoId),date=v.published?new Date(v.published).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';return `<article class="moment-card"><div class="moment-video"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><span class="moment-badge">${v.isLiveNow?'LIVE NOW':(v.isLiveLike?'LIVE STREAM':'STREAM')}</span></div><div class="moment-info"><span>PUBG MOBILE</span><h3>${title}</h3><p>${date}</p><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener noreferrer">WATCH ON YOUTUBE ↗</a></div></article>`}).join('');revealNew()}catch(e){console.error(e);if(status)status.innerHTML=`<span class="status-dot"></span><b>SHAZ LIVE STATUS UNAVAILABLE</b><a href="${channelUrl}" target="_blank" rel="noopener noreferrer">OPEN CHANNEL ↗</a>`;grid.innerHTML=`<div class="moment-error">Couldn’t load the real SHAZ streams right now. <a href="${channelUrl}" target="_blank" rel="noopener noreferrer">Open SHAZ Playz ↗</a></div>`}})();
-
-// Background music: default ON, low volume. Browser autoplay policies are respected.
-(function setupMusic(){const audio=$('#bgMusic'),btn=$('#musicToggle');if(!audio||!btn)return;audio.volume=.18;let enabled=localStorage.getItem('shazMusicEnabled')!=='0';const sync=()=>{btn.classList.toggle('on',enabled);btn.setAttribute('aria-pressed',String(enabled));btn.querySelector('b').textContent=enabled?'ON':'OFF';btn.querySelector('span').textContent=enabled?'♫':'🔇';btn.setAttribute('aria-label',enabled?'Turn background music off':'Turn background music on')};const start=()=>{if(enabled)audio.play().catch(()=>{})};btn.addEventListener('click',e=>{e.stopPropagation();enabled=!enabled;localStorage.setItem('shazMusicEnabled',enabled?'1':'0');enabled?start():audio.pause();sync()});sync();start();['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,start,{once:true,passive:true}))})();
-
-// Postbase community comments. Uses a browser-safe anon key and project id.
-(async function setupComments(){
-  const form=$('#commentForm'),list=$('#commentsList'),count=$('#commentCount'),status=$('#commentStatus'),refresh=$('#commentRefresh'),submit=$('#commentSubmit');
-  if(!form||!list)return;
-  const cfg=window.SHAZ_POSTBASE_CONFIG||{};
-  const configured=cfg.url&&cfg.anonKey&&cfg.projectId&&!cfg.url.includes('YOUR-POSTBASE')&&!cfg.anonKey.includes('YOUR_KEY')&&!cfg.projectId.includes('YOUR_PROJECT');
-  const setStatus=(m,error=false)=>{status.textContent=m;status.classList.toggle('error',error)};
-  if(!configured){list.innerHTML='<div class="comments-setup">The community wall is ready. Add your Postbase URL, anon key and project ID in postbase-config.js to activate shared comments.</div>';setStatus('Postbase connection not configured yet.',true);return}
-  let client;
-  try{const mod=await import('https://esm.unpkg.com/postbasejs@0.5.17?target=es2020');client=mod.createClient(cfg.url,cfg.anonKey,{projectId:cfg.projectId})}
-  catch(e){console.error(e);list.innerHTML='<div class="comments-error">Couldn’t load the Postbase client. Please try again.</div>';setStatus('Postbase client failed to load.',true);return}
-  const relative=iso=>{const sec=Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/1000));if(sec<60)return'just now';for(const[n,l]of[[86400,'day'],[3600,'hour'],[60,'minute']])if(sec>=n){const x=Math.floor(sec/n);return`${x} ${l}${x===1?'':'s'} ago`}return'just now'};
-  const render=rows=>{count.textContent=rows.length;if(!rows.length){list.innerHTML='<div class="comments-empty">No comments yet. Be the first to say something 👋</div>';return}list.innerHTML=rows.map(r=>`<article class="comment-item"><div class="comment-avatar">${esc((r.name||'?').trim().charAt(0).toUpperCase())}</div><div class="comment-body"><div class="comment-meta"><strong>${esc(r.name)}</strong><time datetime="${esc(r.created_at)}">${relative(r.created_at)}</time></div><p>${esc(r.comment).replace(/\n/g,'<br>')}</p></div></article>`).join('')};
-  async function load(){list.innerHTML='<div class="comments-loading">LOADING COMMENTS…</div>';const{data,error}=await client.from('comments').select('id,name,comment,created_at').order('created_at',{ascending:false}).limit(100);if(error){console.error(error);list.innerHTML='<div class="comments-error">Couldn’t load comments right now. Please try again.</div>';setStatus('Couldn’t connect to Postbase.',true);return}render(data||[]);setStatus('Your comment will appear here for everyone.')}
-  form.addEventListener('submit',async e=>{e.preventDefault();const name=form.name.value.trim(),comment=form.comment.value.trim();if(name.length<2){setStatus('Please enter your name.',true);form.name.focus();return}if(comment.length<2){setStatus('Please write a comment.',true);form.comment.focus();return}if(name.length>60||comment.length>1000){setStatus('Please keep the name under 60 characters and comment under 1000.',true);return}submit.disabled=true;setStatus('POSTING COMMENT…');const{error}=await client.from('comments').insert({name,comment});submit.disabled=false;if(error){console.error(error);setStatus('Couldn’t post your comment. Check your Postbase table/policies.',true);return}form.reset();setStatus('Comment posted successfully!');load()});
-  refresh?.addEventListener('click',load);load();
+// Automatically load the latest public uploads from the SHAZ Playz YouTube channel.
+(async function loadLatestYouTubeVideos(){
+  const grid=document.getElementById('youtubeVideos');
+  if(!grid) return;
+  const channelUrl='https://www.youtube.com/@SHAZ_playz';
+  const escapeHtml=(value='')=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const timeAgo=(date)=>{
+    const seconds=Math.max(1,Math.floor((Date.now()-new Date(date).getTime())/1000));
+    const units=[[31536000,'year'],[2592000,'month'],[604800,'week'],[86400,'day'],[3600,'hour'],[60,'minute']];
+    for(const [size,name] of units){if(seconds>=size){const n=Math.floor(seconds/size);return `${n} ${name}${n===1?'':'s'} ago`;}}
+    return 'just now';
+  };
+  try{
+    const response=await fetch('/api/youtube',{headers:{Accept:'application/json'},cache:'no-store'});
+    if(!response.ok) throw new Error(`API ${response.status}`);
+    const data=await response.json();
+    if(!data.items?.length) throw new Error('No public videos found');
+    grid.innerHTML=data.items.slice(0,3).map((video,index)=>{
+      const title=escapeHtml(video.title);
+      const thumb=escapeHtml(video.thumbnail);
+      const url=escapeHtml(video.url);
+      const date=video.published ? timeAgo(video.published) : 'YouTube upload';
+      return `<a class="video-card ${index===0?'big':''}" href="${url}" target="_blank" rel="noopener noreferrer">
+        <div class="thumb"><img class="video-thumb" src="${thumb}" alt="${title}" loading="${index===0?'eager':'lazy'}"><div class="thumb-overlay"></div><span class="play">▶</span>${index===0?'<label>LATEST</label>':''}</div>
+        <div class="video-info"><span>PUBG MOBILE</span><h3>${title}</h3><p>${date} · Watch on YouTube</p></div>
+      </a>`;
+    }).join('');
+  }catch(error){
+    console.error('YouTube feed error:',error);
+    grid.innerHTML=`<div class="video-error">Couldn’t load the latest videos right now. <a href="${channelUrl}" target="_blank" rel="noopener">Open SHAZ Playz on YouTube ↗</a></div>`;
+  }
 })();
 
-// Photo lightbox
-(function(){const cards=$$('.photo-card'),box=$('#photoLightbox'),img=$('#lightboxImage'),cap=$('#lightboxCaption'),close=$('#lightboxClose'),prev=$('#lightboxPrev'),next=$('#lightboxNext');if(!cards.length||!box)return;const items=cards.map(c=>({src:c.querySelector('img')?.src||'',alt:c.querySelector('img')?.alt||'SHAZ',cap:c.querySelector('figcaption')?.textContent||''}));let i=0;const show=n=>{i=(n+items.length)%items.length;img.src=items[i].src;img.alt=items[i].alt;cap.textContent=items[i].cap;box.classList.add('open');box.setAttribute('aria-hidden','false');document.body.classList.add('lightbox-open')};const hide=()=>{box.classList.remove('open');box.setAttribute('aria-hidden','true');document.body.classList.remove('lightbox-open')};cards.forEach((c,n)=>c.addEventListener('click',()=>show(n)));close?.addEventListener('click',hide);prev?.addEventListener('click',()=>show(i-1));next?.addEventListener('click',()=>show(i+1));box.addEventListener('click',e=>{if(e.target===box)hide()});addEventListener('keydown',e=>{if(!box.classList.contains('open'))return;if(e.key==='Escape')hide();if(e.key==='ArrowLeft')show(i-1);if(e.key==='ArrowRight')show(i+1)})})();
 
-function revealNew(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const targets=$$('.panel,.video-card,.moment-card,.photo-card,.social,.contact-card,.comments-box');if(!('IntersectionObserver'in window)){targets.forEach(e=>e.classList.add('revealed'));return}const ob=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('revealed');ob.unobserve(e.target)}}),{threshold:.08});targets.forEach(e=>{if(!e.classList.contains('reveal')){e.classList.add('reveal');ob.observe(e)}})}revealNew();
+// Compact real-video cards from SHAZ live streams. The API detects live/VOD streams from the channel.
+(async function loadLiveMoments(){
+  const grid=document.getElementById('liveMoments');
+  if(!grid) return;
+  const esc=(v='')=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  try{
+    const response=await fetch('/api/youtube?live=1',{headers:{Accept:'application/json'},cache:'no-store'});
+    if(!response.ok) throw new Error(`API ${response.status}`);
+    const data=await response.json();
+    const items=(data.liveItems?.length?data.liveItems:data.items||[]).slice(0,6);
+    if(!items.length) throw new Error('No public stream videos found');
+    grid.innerHTML=items.map((video,i)=>{
+      const title=esc(video.title||'SHAZ LIVE');
+      const id=esc(video.videoId);
+      const date=video.published?new Date(video.published).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'';
+      return `<article class="moment-card">
+        <div class="moment-video"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><span class="moment-badge">${video.isLiveLike?'LIVE STREAM':'STREAM'}</span></div>
+        <div class="moment-info"><span>PUBG MOBILE</span><h3>${title}</h3><p>${date}</p><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">WATCH ON YOUTUBE ↗</a></div>
+      </article>`;
+    }).join('');
+  }catch(error){
+    console.error('Live moments error:',error);
+    grid.innerHTML=`<div class="moment-error">Couldn’t load the real SHAZ streams right now. <a href="https://www.youtube.com/@SHAZ_playz" target="_blank" rel="noopener">Open SHAZ Playz ↗</a></div>`;
+  }
+})();
+
+// Background music: ON by default. Visitors can turn it off; the choice is remembered.
+// Note: browsers may block audible autoplay until the visitor interacts with the page.
+(function setupMusic(){
+  const audio=document.getElementById('bgMusic'), btn=document.getElementById('musicToggle');
+  if(!audio||!btn) return;
+  audio.volume=0.22;
+
+  const saved=localStorage.getItem('shazMusicEnabled');
+  let enabled=saved===null ? true : saved==='1';
+
+  const sync=()=>{
+    btn.classList.toggle('on',enabled);
+    btn.setAttribute('aria-pressed',String(enabled));
+    btn.querySelector('b').textContent=enabled?'ON':'OFF';
+    btn.querySelector('span').textContent=enabled?'♫':'🔇';
+    btn.setAttribute('aria-label',enabled?'Turn background music off':'Turn background music on');
+  };
+
+  const start=()=>{
+    if(!enabled) return;
+    audio.play().catch(()=>{});
+  };
+
+  const stop=()=>{
+    audio.pause();
+  };
+
+  btn.addEventListener('click',(event)=>{
+    event.stopPropagation();
+    enabled=!enabled;
+    localStorage.setItem('shazMusicEnabled',enabled?'1':'0');
+    if(enabled) start(); else stop();
+    sync();
+  });
+
+  // Try immediately on page load. If the browser blocks audible autoplay,
+  // start automatically on the visitor's first interaction.
+  sync();
+  start();
+  window.addEventListener('pointerdown',start,{once:true,passive:true});
+  window.addEventListener('keydown',start,{once:true,passive:true});
+  window.addEventListener('touchstart',start,{once:true,passive:true});
+})();
+
+// Community comments: Supabase-backed, shared across all visitors.
+(function setupComments(){
+  const form=document.getElementById('commentForm');
+  const list=document.getElementById('commentsList');
+  const count=document.getElementById('commentCount');
+  const status=document.getElementById('commentStatus');
+  const refresh=document.getElementById('commentRefresh');
+  const submit=document.getElementById('commentSubmit');
+  if(!form||!list) return;
+
+  const cfg=window.SHAZ_SUPABASE_CONFIG||{};
+  const configured=cfg.url && cfg.anonKey && !cfg.url.includes('YOUR-PROJECT') && !cfg.anonKey.includes('YOUR_SUPABASE');
+  let client=null;
+  if(window.supabase && configured) client=window.supabase.createClient(cfg.url,cfg.anonKey);
+
+  const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const relative=(iso)=>{
+    const sec=Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/1000));
+    if(sec<60) return 'just now';
+    const units=[[86400,'day'],[3600,'hour'],[60,'minute']];
+    for(const [n,label] of units) if(sec>=n){const x=Math.floor(sec/n);return `${x} ${label}${x===1?'':'s'} ago`;}
+    return 'just now';
+  };
+  const setStatus=(msg,error=false)=>{status.textContent=msg;status.classList.toggle('error',error)};
+
+  const render=(rows)=>{
+    count.textContent=String(rows.length);
+    if(!rows.length){list.innerHTML='<div class="comments-empty">No comments yet. Be the first to say something 👋</div>';return;}
+    list.innerHTML=rows.map(row=>`<article class="comment-item"><div class="comment-avatar">${esc((row.name||'?').trim().charAt(0).toUpperCase())}</div><div class="comment-body"><div class="comment-meta"><strong>${esc(row.name)}</strong><time datetime="${esc(row.created_at)}">${relative(row.created_at)}</time></div><p>${esc(row.comment).replace(/\n/g,'<br>')}</p></div></article>`).join('');
+  };
+
+  async function load(){
+    if(!client){
+      list.innerHTML='<div class="comments-setup">Comments are ready, but the Supabase connection is not configured yet.</div>';
+      count.textContent='0';
+      setStatus('Add your Supabase URL and anon public key in supabase-config.js.',true);
+      return;
+    }
+    list.innerHTML='<div class="comments-loading">LOADING COMMENTS…</div>';
+    const {data,error}=await client.from('comments').select('id,name,comment,created_at').order('created_at',{ascending:false}).limit(100);
+    if(error){console.error(error);list.innerHTML='<div class="comments-error">Couldn’t load comments right now. Please try again.</div>';setStatus('Couldn’t connect to the comments database.',true);return;}
+    render(data||[]);setStatus('Your comment will appear here for everyone.');
+  }
+
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault();
+    if(!client){setStatus('Comments are not connected yet. Please finish the Supabase setup.',true);return;}
+    const name=form.name.value.trim(), comment=form.comment.value.trim();
+    if(name.length<2){setStatus('Please enter your name.',true);form.name.focus();return;}
+    if(comment.length<2){setStatus('Please write a comment.',true);form.comment.focus();return;}
+    if(name.length>60||comment.length>1000){setStatus('Please keep the name under 60 characters and comment under 1000.',true);return;}
+    submit.disabled=true;submit.classList.add('loading');setStatus('POSTING COMMENT…');
+    const {error}=await client.from('comments').insert({name,comment});
+    submit.disabled=false;submit.classList.remove('loading');
+    if(error){console.error(error);setStatus('Couldn’t post your comment. Please try again.',true);return;}
+    form.reset();setStatus('Comment posted successfully!');await load();
+  });
+  refresh?.addEventListener('click',load);
+  load();
+})();

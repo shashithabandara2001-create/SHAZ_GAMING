@@ -1,24 +1,12 @@
-# SHAZ Gaming V12
+SHAZ Gaming V12
 
-Premium blue/black SHAZ Gaming website built around the supplied YouTube cover artwork.
+V12 updates: above-the-fold original SHAZ portrait, faster hero image preload, clear creator identity label, while preserving V10 functionality (BGM, live moments, comments, social DM links).
 
-## V12 upgrades
-- Full-screen YouTube-cover hero with cinematic overlays
-- Responsive desktop/tablet/mobile layout
-- Scroll progress + active navigation
-- Mobile navigation drawer
-- Premium loading screen
-- Blue particle field and reveal animations
-- Automatic latest YouTube videos via `/api/youtube`
-- Live status + real SHAZ stream wall
-- Full-screen photo lightbox with keyboard navigation
-- Background music, low volume by default, visitor ON/OFF memory
-- Facebook + Instagram direct-message cards
-- Postbase-ready shared community comments
-- Accessibility basics: skip link, labels, reduced-motion support
-- Back-to-top control and polished footer
+SHAZ Gaming V8
 
-## Deploy
-Upload the contents of `shaz_v2` to the Vercel project. Keep the `api/youtube.js` file under the project `api` directory so `/api/youtube` works.
+- Real SHAZ YouTube stream/VOD cards in the LIVE MOMENTS section.
+- Background music control prepared at 22% volume. Put the selected Pixabay MP3 at assets/background-music.mp3.
+- Music starts after a user interaction if enabled, due to browser autoplay restrictions.
+- Existing SHAZ photos, socials and latest-video feed preserved.
 
-For comments, follow `POSTBASE_SETUP.md` before expecting shared visitor comments.
+Selected track: Game Gaming Background Music by MaksymMalko, Pixabay.
