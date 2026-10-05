@@ -167,3 +167,37 @@ nav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classL
   refresh?.addEventListener('click',load);
   load();
 })();
+
+
+// SHAZ photo gallery lightbox: keeps the original photos untouched and opens them full-screen.
+(function setupPhotoLightbox(){
+  const cards=[...document.querySelectorAll('.photo-card')];
+  const box=document.getElementById('photoLightbox');
+  const img=document.getElementById('lightboxImage');
+  const caption=document.getElementById('lightboxCaption');
+  const close=document.getElementById('lightboxClose');
+  const prev=document.getElementById('lightboxPrev');
+  const next=document.getElementById('lightboxNext');
+  if(!cards.length||!box||!img) return;
+  let index=0;
+  const items=cards.map(card=>({src:card.querySelector('img')?.src||'',alt:card.querySelector('img')?.alt||'SHAZ',caption:card.querySelector('figcaption')?.textContent||''}));
+  const show=(i)=>{
+    index=(i+items.length)%items.length;
+    img.src=items[index].src; img.alt=items[index].alt; caption.textContent=items[index].caption;
+    box.classList.add('open'); box.setAttribute('aria-hidden','false'); document.body.classList.add('lightbox-open');
+  };
+  const hide=()=>{box.classList.remove('open');box.setAttribute('aria-hidden','true');document.body.classList.remove('lightbox-open');};
+  cards.forEach((card,i)=>card.addEventListener('click',e=>{if(e.target.closest('a')) return;show(i);}));
+  close?.addEventListener('click',hide); prev?.addEventListener('click',()=>show(index-1)); next?.addEventListener('click',()=>show(index+1));
+  box.addEventListener('click',e=>{if(e.target===box) hide();});
+  document.addEventListener('keydown',e=>{if(!box.classList.contains('open')) return;if(e.key==='Escape')hide();if(e.key==='ArrowLeft')show(index-1);if(e.key==='ArrowRight')show(index+1);});
+})();
+
+// Small reveal animation for major cards, disabled for reduced-motion users.
+(function setupReveal(){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const targets=document.querySelectorAll('.panel,.video-card,.moment-card,.photo-card,.social,.contact-card,.comments-box');
+  if(!('IntersectionObserver' in window)){targets.forEach(el=>el.classList.add('revealed'));return;}
+  const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('revealed');observer.unobserve(entry.target);}}),{threshold:.08});
+  targets.forEach(el=>{el.classList.add('reveal');observer.observe(el);});
+})();
